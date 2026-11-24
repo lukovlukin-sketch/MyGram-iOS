@@ -100,9 +100,11 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
 
-          which bazel || brew install bazelisk
-          BAZEL_BIN="$(which bazel)"
-          echo "Using bazel at: $BAZEL_BIN"
+          BAZEL_VERSION=$(python3 -c 'import json; print(json.load(open("versions.json"))["bazel"].split(":")[0])')
+          BAZEL_BIN="/tmp/bazel-${BAZEL_VERSION}"
+          curl -fsSL "https://github.com/bazelbuild/bazel/releases/download/${BAZEL_VERSION}/bazel-${BAZEL_VERSION}-darwin-x86_64" -o "$BAZEL_BIN"
+          chmod +x "$BAZEL_BIN"
+          "$BAZEL_BIN" --version
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           set -o pipefail
           python3 -u build-system/Make/Make.py \
