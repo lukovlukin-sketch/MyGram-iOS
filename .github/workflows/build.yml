@@ -60,7 +60,7 @@ jobs:
           with open("build-system/appstore-configuration.json", "r", encoding="utf-8") as f:
               cfg = json.load(f)
 
-          cfg["bundle_id"] = bundle_id
+          # Keep bundle_id matching build-system/fake-codesigning/profiles (SideStore/Sideloadly rewrites it on install)
           if api_id and api_hash:
               cfg["api_id"] = api_id
               cfg["api_hash"] = api_hash
@@ -75,7 +75,7 @@ jobs:
           with open("build-system/mygram-configuration.json", "w", encoding="utf-8") as f:
               json.dump(cfg, f, indent=4)
 
-          print(f"Generated build-system/mygram-configuration.json with bundle_id={bundle_id}")
+          print(f"Generated build-system/mygram-configuration.json with bundle_id={cfg['bundle_id']}")
           PY
 
       - name: Create canonical source directory
@@ -102,6 +102,7 @@ jobs:
 
           which bazel || brew install bazelisk
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+          set -o pipefail
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             --overrideXcodeVersion \
@@ -110,7 +111,11 @@ jobs:
             --configurationPath="build-system/mygram-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=release_arm64 \
-            --buildNumber="$BUILD_NUMBER"
+            --buildNumber="$BUILD_NUMBER" 2>&1 | tee /tmp/mygram_build.log || {
+              ERR_TAIL=$(tail -n 25 /tmp/mygram_build.log | tr '\n' ' ' | cut -c1-1200)
+              echo "::error::Build failed: $ERR_TAIL"
+              exit 1
+            }
 
           OUTPUT_PATH="$SOURCE_DIR/build/artifacts"
           rm -rf "$OUTPUT_PATH"
