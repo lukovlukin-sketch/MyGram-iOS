@@ -1,0 +1,847 @@
+import Foundation
+import SGAppGroupIdentifier
+import SGLogging
+
+let APP_GROUP_IDENTIFIER = sgAppGroupIdentifier()
+
+public class SGSimpleSettings {
+    
+    public static let shared = SGSimpleSettings()
+    
+    private init() {
+        setDefaultValues()
+        migrate()
+        preCacheValues()
+    }
+    
+    private func setDefaultValues() {
+        UserDefaults.standard.register(defaults: SGSimpleSettings.defaultValues)
+        // Just in case group defaults will be nil
+        UserDefaults.standard.register(defaults: SGSimpleSettings.groupDefaultValues)
+        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+            groupUserDefaults.register(defaults: SGSimpleSettings.groupDefaultValues)
+        }
+    }
+    
+    private func migrate() {
+        if !Bundle.main.bundlePath.hasSuffix(".appex"), let defaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+            defaults.set(self.sendLargePhotos, forKey: Keys.sendLargePhotos.rawValue)
+            defaults.set(self.outgoingPhotoQuality, forKey: Keys.outgoingPhotoQuality.rawValue)
+        }
+        let showRepostToStoryMigrationKey = "migrated_\(Keys.showRepostToStory.rawValue)"
+        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+            if !groupUserDefaults.bool(forKey: showRepostToStoryMigrationKey) {
+                self.showRepostToStoryV2 = self.showRepostToStory
+                groupUserDefaults.set(true, forKey: showRepostToStoryMigrationKey)
+                SGLogger.shared.log("SGSimpleSettings", "Migrated showRepostToStory. \(self.showRepostToStory) -> \(self.showRepostToStoryV2)")
+            }
+        } else {
+            SGLogger.shared.log("SGSimpleSettings", "Unable to migrate showRepostToStory. Shared UserDefaults suite is not available for '\(APP_GROUP_IDENTIFIER)'.")
+        }
+
+        let chatListLinesMigrationKey = "migrated_\(Keys.chatListLines.rawValue)"
+        if !UserDefaults.standard.bool(forKey: chatListLinesMigrationKey) {
+            let legacyCompactMessagePreviewKey = "compactMessagePreview"
+            if UserDefaults.standard.object(forKey: legacyCompactMessagePreviewKey) != nil {
+                if UserDefaults.standard.bool(forKey: legacyCompactMessagePreviewKey) {
+                    self.chatListLines = ChatListLines.one.rawValue
+                }
+                UserDefaults.standard.removeObject(forKey: legacyCompactMessagePreviewKey)
+                SGLogger.shared.log("SGSimpleSettings", "Migrated compactMessagePreview -> chatListLines. \(self.chatListLines)")
+            }
+            UserDefaults.standard.set(true, forKey: chatListLinesMigrationKey)
+        }
+    }
+    
+    private func preCacheValues() {
+        // let dispatchGroup = DispatchGroup()
+
+        let tasks = [
+//            { let _ = self.allChatsFolderPositionOverride },
+            { let _ = self.tabBarSearchEnabled },
+            { let _ = self.allChatsHidden },
+            { let _ = self.hideTabBar },
+            { let _ = self.bottomTabStyle },
+            { let _ = self.compactChatList },
+            { let _ = self.chatListLines },
+            { let _ = self.compactFolderNames },
+            { let _ = self.disableSwipeToRecordStory },
+            { let _ = self.rememberLastFolder },
+            { let _ = self.quickTranslateButton },
+            { let _ = self.stickerSize },
+            { let _ = self.stickerTimestamp },
+            { let _ = self.hideReactions },
+            { let _ = self.disableGalleryCamera },
+            { let _ = self.disableSendAsButton },
+            { let _ = self.disableSnapDeletionEffect },
+            { let _ = self.startTelescopeWithRearCam },
+            { let _ = self.hideRecordingButton },
+            { let _ = self.inputToolbar },
+            { let _ = self.dismissedSGSuggestions },
+            { let _ = self.customAppBadge }
+        ]
+
+        tasks.forEach { task in
+            DispatchQueue.global(qos: .background).async(/*group: dispatchGroup*/) {
+                task()
+            }
+        }
+
+        // dispatchGroup.notify(queue: DispatchQueue.main) {}
+    }
+    
+    public func synchronizeShared() {
+        if let groupUserDefaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER) {
+            groupUserDefaults.synchronize()
+        }
+    }
+    
+    public enum Keys: String, CaseIterable {
+        case hidePhoneInSettings
+        case showTabNames
+        case startTelescopeWithRearCam
+        case accountColorsSaturation
+        case uploadSpeedBoost
+        case downloadSpeedBoost
+        case bottomTabStyle
+        case rememberLastFolder
+        case lastAccountFolders
+        case localDNSForProxyHost
+        case sendLargePhotos
+        case outgoingPhotoQuality
+        case storyStealthMode
+        case canUseStealthMode
+        case disableSwipeToRecordStory
+        case quickTranslateButton
+        case outgoingLanguageTranslation
+        case hideReactions
+        case showRepostToStory
+        case showRepostToStoryV2
+        case contextShowSelectFromUser
+        case contextShowSaveToCloud
+        case contextShowRestrict
+        // case contextShowBan
+        case contextShowHideForwardName
+        case contextShowReport
+        case contextShowReply
+        case contextShowPin
+        case contextShowSaveMedia
+        case contextShowMessageReplies
+        case contextShowJson
+        case disableScrollToNextChannel
+        case disableScrollToNextTopic
+        case disableChatSwipeOptions
+        case disableDeleteChatSwipeOption
+        case disableGalleryCamera
+        case disableGalleryCameraPreview
+        case disableSendAsButton
+        case disableSnapDeletionEffect
+        case stickerSize
+        case stickerTimestamp
+        case hideRecordingButton
+        case hideTabBar
+        case showDC
+        case showCreationDate
+        case showRegDate
+        case regDateCache
+        case compactChatList
+        case chatListLines
+        case compactFolderNames
+        case allChatsTitleLengthOverride
+//        case allChatsFolderPositionOverride
+        case allChatsHidden
+        case defaultEmojisFirst
+        case messageDoubleTapActionOutgoing
+        case wideChannelPosts
+        case forceEmojiTab
+        case forceBuiltInMic
+        case secondsInMessages
+        case hideChannelBottomButton
+        case forceSystemSharing
+        case confirmCalls
+        case videoPIPSwipeDirection
+        case legacyNotificationsFix
+        case messageFilterKeywords
+        case inputToolbar
+        case pinnedMessageNotifications
+        case mentionsAndRepliesNotifications
+        case primaryUserId
+        case status
+        case dismissedSGSuggestions
+        case duckyAppIconAvailable
+        case transcriptionBackend
+        case translationBackend
+        case translatorLogsExpiration
+        case customAppBadge
+        case canUseNY
+        case nyStyle
+        case wideTabBar
+        case tabBarSearchEnabled
+        case hideStories
+        case warnOnStoriesOpen
+        case showProfileId
+        case sendWithReturnKey
+        case videoControlsInFooter
+        case combinedMediaViewer
+        case hideAccountInNotifications
+        case keepDeletedMessages
+        case saveEditHistory
+        case ghostModeDontRead
+        case ghostModeDontSendTyping
+        case ghostModeStayOffline
+        case fakeGpsEnabled
+        case fakeGpsMode
+        case fakeGpsCoordinates
+        case fakeGpsSpeed
+        case fakeGpsCircleRadius
+        case fakeGpsJitter
+        case fakeGpsFrozenCoord
+        case fakeGpsLoopStartTime
+        case fakeGpsSmartPauses
+        case fakeGpsPresetsJson
+        case geminiApiKey
+        case stealthHideChatsEnabled
+        case stealthPasscode
+        case hiddenChatIdsJson
+        case ghostModeReadOnSend
+        case keepDeletedMediaCache
+        case quickRepliesJson
+    }
+    
+    public enum DownloadSpeedBoostValues: String, CaseIterable {
+        case none
+        case medium
+        case maximum
+    }
+
+    public enum FakeGPSMode: String, CaseIterable {
+        case staticPoint
+        case freezeCurrent
+        case circleWalk
+        case loopRoute
+        case pingPong
+        case driveToTarget
+    }
+
+    public enum FakeGPSSpeed: String, CaseIterable {
+        case walk
+        case bike
+        case car
+    }
+
+    public enum FakeGPSRadius: String, CaseIterable {
+        case r50 = "50"
+        case r150 = "150"
+        case r300 = "300"
+        case r500 = "500"
+    }
+    
+    public enum BottomTabStyleValues: String, CaseIterable {
+        case telegram
+        case ios
+    }
+    
+    public enum AllChatsTitleLengthOverride: String, CaseIterable {
+        case none
+        case short
+        case long
+    }
+    
+    public enum AllChatsFolderPositionOverride: String, CaseIterable {
+        case none
+        case last
+        case hidden
+    }
+
+    public enum ChatListLines: String, CaseIterable {
+        case three = "3"
+        case two = "2"
+        case one = "1"
+
+        public static let defaultValue: ChatListLines = .three
+    }
+    
+    public enum MessageDoubleTapAction: String, CaseIterable {
+        case `default`
+        case none
+        case edit
+    }
+    
+    public enum VideoPIPSwipeDirection: String, CaseIterable {
+        case up
+        case down
+        case none
+    }
+
+    public enum TranscriptionBackend: String, CaseIterable {
+        case `default`
+        case apple
+    }
+
+    public enum TranslationBackend: String, CaseIterable {
+        case `default`
+        case gtranslate
+        case system
+        // Make sure to update TranslationConfiguration
+    }
+        
+    public enum PinnedMessageNotificationsSettings: String, CaseIterable {
+        case `default`
+        case silenced
+        case disabled
+    }
+    
+    public enum MentionsAndRepliesNotificationsSettings: String, CaseIterable {
+        case `default`
+        case silenced
+        case disabled
+    }
+
+    public enum NYStyle: String, CaseIterable {
+        case `default`
+        case snow
+        case lightning
+    }
+    
+    public static let defaultValues: [String: Any] = [
+        Keys.hidePhoneInSettings.rawValue: true,
+        Keys.showTabNames.rawValue: true,
+        Keys.startTelescopeWithRearCam.rawValue: false,
+        Keys.accountColorsSaturation.rawValue: 100,
+        Keys.uploadSpeedBoost.rawValue: false,
+        Keys.downloadSpeedBoost.rawValue: DownloadSpeedBoostValues.none.rawValue,
+        Keys.rememberLastFolder.rawValue: false,
+        Keys.bottomTabStyle.rawValue: BottomTabStyleValues.telegram.rawValue,
+        Keys.lastAccountFolders.rawValue: [:],
+        Keys.localDNSForProxyHost.rawValue: false,
+        Keys.sendLargePhotos.rawValue: false,
+        Keys.outgoingPhotoQuality.rawValue: 70,
+        Keys.storyStealthMode.rawValue: false,
+        Keys.canUseStealthMode.rawValue: true,
+        Keys.disableSwipeToRecordStory.rawValue: false,
+        Keys.quickTranslateButton.rawValue: false,
+        Keys.outgoingLanguageTranslation.rawValue: [:],
+        Keys.hideReactions.rawValue: false,
+        Keys.showRepostToStory.rawValue: true,
+        Keys.contextShowSelectFromUser.rawValue: true,
+        Keys.contextShowSaveToCloud.rawValue: true,
+        Keys.contextShowRestrict.rawValue: true,
+        // Keys.contextShowBan.rawValue: true,
+        Keys.contextShowHideForwardName.rawValue: true,
+        Keys.contextShowReport.rawValue: true,
+        Keys.contextShowReply.rawValue: true,
+        Keys.contextShowPin.rawValue: true,
+        Keys.contextShowSaveMedia.rawValue: true,
+        Keys.contextShowMessageReplies.rawValue: true,
+        Keys.contextShowJson.rawValue: false,
+        Keys.disableScrollToNextChannel.rawValue: false,
+        Keys.disableScrollToNextTopic.rawValue: false,
+        Keys.disableChatSwipeOptions.rawValue: false,
+        Keys.disableDeleteChatSwipeOption.rawValue: false,
+        Keys.disableGalleryCamera.rawValue: false,
+        Keys.disableGalleryCameraPreview.rawValue: false,
+        Keys.disableSendAsButton.rawValue: false,
+        Keys.disableSnapDeletionEffect.rawValue: false,
+        Keys.stickerSize.rawValue: 100,
+        Keys.stickerTimestamp.rawValue: true,
+        Keys.hideRecordingButton.rawValue: false,
+        Keys.hideTabBar.rawValue: false,
+        Keys.showDC.rawValue: false,
+        Keys.showCreationDate.rawValue: true,
+        Keys.showRegDate.rawValue: true,
+        Keys.regDateCache.rawValue: [:],
+        Keys.compactChatList.rawValue: false,
+        Keys.chatListLines.rawValue: ChatListLines.defaultValue.rawValue,
+        Keys.compactFolderNames.rawValue: false,
+        Keys.allChatsTitleLengthOverride.rawValue: AllChatsTitleLengthOverride.none.rawValue,
+//        Keys.allChatsFolderPositionOverride.rawValue: AllChatsFolderPositionOverride.none.rawValue
+        Keys.allChatsHidden.rawValue: false,
+        Keys.defaultEmojisFirst.rawValue: false,
+        Keys.messageDoubleTapActionOutgoing.rawValue: MessageDoubleTapAction.default.rawValue,
+        Keys.wideChannelPosts.rawValue: false,
+        Keys.forceEmojiTab.rawValue: false,
+        Keys.hideChannelBottomButton.rawValue: false,
+        Keys.secondsInMessages.rawValue: true,
+        Keys.forceSystemSharing.rawValue: false,
+        Keys.confirmCalls.rawValue: true,
+        Keys.videoPIPSwipeDirection.rawValue: VideoPIPSwipeDirection.up.rawValue,
+        Keys.messageFilterKeywords.rawValue: [],
+        Keys.inputToolbar.rawValue: false,
+        Keys.primaryUserId.rawValue: "",
+        Keys.dismissedSGSuggestions.rawValue: [],
+        Keys.duckyAppIconAvailable.rawValue: true,
+        Keys.transcriptionBackend.rawValue: TranscriptionBackend.default.rawValue,
+        Keys.translationBackend.rawValue: TranslationBackend.default.rawValue,
+        Keys.translatorLogsExpiration.rawValue: 0.0,
+        Keys.customAppBadge.rawValue: "",
+        Keys.canUseNY.rawValue: false,
+        Keys.nyStyle.rawValue: NYStyle.default.rawValue,
+        Keys.wideTabBar.rawValue: false,
+        Keys.tabBarSearchEnabled.rawValue: true,
+        Keys.hideStories.rawValue: false,
+        Keys.warnOnStoriesOpen.rawValue: false,
+        Keys.showProfileId.rawValue: true,
+        Keys.sendWithReturnKey.rawValue: false,
+        Keys.videoControlsInFooter.rawValue: false,
+        Keys.combinedMediaViewer.rawValue: false,
+        Keys.keepDeletedMessages.rawValue: true,
+        Keys.saveEditHistory.rawValue: true,
+        Keys.ghostModeDontRead.rawValue: false,
+        Keys.ghostModeDontSendTyping.rawValue: false,
+        Keys.ghostModeStayOffline.rawValue: false,
+        Keys.fakeGpsEnabled.rawValue: false,
+        Keys.fakeGpsMode.rawValue: FakeGPSMode.staticPoint.rawValue,
+        Keys.fakeGpsCoordinates.rawValue: "55.7558, 37.6173",
+        Keys.fakeGpsSpeed.rawValue: FakeGPSSpeed.walk.rawValue,
+        Keys.fakeGpsCircleRadius.rawValue: FakeGPSRadius.r150.rawValue,
+        Keys.fakeGpsJitter.rawValue: true,
+        Keys.fakeGpsFrozenCoord.rawValue: "",
+        Keys.fakeGpsLoopStartTime.rawValue: 0.0,
+        Keys.fakeGpsSmartPauses.rawValue: true,
+        Keys.fakeGpsPresetsJson.rawValue: "",
+        Keys.geminiApiKey.rawValue: "",
+        Keys.stealthHideChatsEnabled.rawValue: false,
+        Keys.stealthPasscode.rawValue: "",
+        Keys.hiddenChatIdsJson.rawValue: "",
+        Keys.ghostModeReadOnSend.rawValue: false,
+        Keys.keepDeletedMediaCache.rawValue: true,
+        Keys.quickRepliesJson.rawValue: "",
+    ]
+    
+    public static let groupDefaultValues: [String: Any] = [
+        Keys.legacyNotificationsFix.rawValue: false,
+        Keys.pinnedMessageNotifications.rawValue: PinnedMessageNotificationsSettings.default.rawValue,
+        Keys.mentionsAndRepliesNotifications.rawValue: MentionsAndRepliesNotificationsSettings.default.rawValue,
+        Keys.status.rawValue: 1,
+        Keys.showRepostToStoryV2.rawValue: true,
+        Keys.hideAccountInNotifications.rawValue: false,
+    ]
+    
+    @UserDefault(key: Keys.hidePhoneInSettings.rawValue)
+    public var hidePhoneInSettings: Bool
+    
+    @UserDefault(key: Keys.showTabNames.rawValue)
+    public var showTabNames: Bool
+    
+    @UserDefault(key: Keys.startTelescopeWithRearCam.rawValue)
+    public var startTelescopeWithRearCam: Bool
+    
+    @UserDefault(key: Keys.accountColorsSaturation.rawValue)
+    public var accountColorsSaturation: Int32
+    
+    @UserDefault(key: Keys.uploadSpeedBoost.rawValue)
+    public var uploadSpeedBoost: Bool
+    
+    @UserDefault(key: Keys.downloadSpeedBoost.rawValue)
+    public var downloadSpeedBoost: String
+    
+    @UserDefault(key: Keys.rememberLastFolder.rawValue)
+    public var rememberLastFolder: Bool
+    
+    // Disabled while Telegram is migrating to Glass
+    // @UserDefault(key: Keys.bottomTabStyle.rawValue)
+    public var bottomTabStyle: String {
+        set {}
+        get {
+            return BottomTabStyleValues.ios.rawValue
+        }
+    }
+    
+    public var lastAccountFolders = UserDefaultsBackedDictionary<String, Int32>(userDefaultsKey: Keys.lastAccountFolders.rawValue, threadSafe: false)
+    
+    @UserDefault(key: Keys.localDNSForProxyHost.rawValue)
+    public var localDNSForProxyHost: Bool
+    
+    @UserDefault(key: Keys.sendLargePhotos.rawValue)
+    public var sendLargePhotos: Bool {
+        didSet { UserDefaults(suiteName: APP_GROUP_IDENTIFIER)?.set(self.sendLargePhotos, forKey: Keys.sendLargePhotos.rawValue) }
+    }
+    
+    @UserDefault(key: Keys.outgoingPhotoQuality.rawValue)
+    public var outgoingPhotoQuality: Int32 {
+        didSet { UserDefaults(suiteName: APP_GROUP_IDENTIFIER)?.set(self.outgoingPhotoQuality, forKey: Keys.outgoingPhotoQuality.rawValue) }
+    }
+
+    // Read fresh values across processes; extension-local defaults do not contain the app's preferences.
+    public var sharePhotoSettings: (sendLargePhotos: Bool, quality: Double) {
+        let defaults = UserDefaults(suiteName: APP_GROUP_IDENTIFIER)
+        let large = defaults?.object(forKey: Keys.sendLargePhotos.rawValue) as? Bool ?? false
+        let quality = defaults?.object(forKey: Keys.outgoingPhotoQuality.rawValue) as? NSNumber
+        return (large, Double(min(100, max(0, quality?.intValue ?? 70))) / 100.0)
+    }
+
+    @UserDefault(key: Keys.hideStories.rawValue)
+    public var hideStories: Bool
+
+    @UserDefault(key: Keys.warnOnStoriesOpen.rawValue)
+    public var warnOnStoriesOpen: Bool
+    
+    @UserDefault(key: Keys.storyStealthMode.rawValue)
+    public var storyStealthMode: Bool
+    
+    @UserDefault(key: Keys.canUseStealthMode.rawValue)
+    public var canUseStealthMode: Bool    
+    
+    @UserDefault(key: Keys.disableSwipeToRecordStory.rawValue)
+    public var disableSwipeToRecordStory: Bool   
+    
+    @UserDefault(key: Keys.quickTranslateButton.rawValue)
+    public var quickTranslateButton: Bool
+    
+    public var outgoingLanguageTranslation = UserDefaultsBackedDictionary<String, String>(userDefaultsKey: Keys.outgoingLanguageTranslation.rawValue, threadSafe: false)
+    
+    @UserDefault(key: Keys.hideReactions.rawValue)
+    public var hideReactions: Bool
+
+    // @available(*, deprecated, message: "Use showRepostToStoryV2 instead")
+    @UserDefault(key: Keys.showRepostToStory.rawValue)
+    public var showRepostToStory: Bool
+
+    @UserDefault(key: Keys.showRepostToStoryV2.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var showRepostToStoryV2: Bool
+
+    @UserDefault(key: Keys.contextShowRestrict.rawValue)
+    public var contextShowRestrict: Bool
+
+    /*@UserDefault(key: Keys.contextShowBan.rawValue)
+    public var contextShowBan: Bool*/
+
+    @UserDefault(key: Keys.contextShowSelectFromUser.rawValue)
+    public var contextShowSelectFromUser: Bool
+
+    @UserDefault(key: Keys.contextShowSaveToCloud.rawValue)
+    public var contextShowSaveToCloud: Bool
+
+    @UserDefault(key: Keys.contextShowHideForwardName.rawValue)
+    public var contextShowHideForwardName: Bool
+
+    @UserDefault(key: Keys.contextShowReport.rawValue)
+    public var contextShowReport: Bool
+
+    @UserDefault(key: Keys.contextShowReply.rawValue)
+    public var contextShowReply: Bool
+
+    @UserDefault(key: Keys.contextShowPin.rawValue)
+    public var contextShowPin: Bool
+
+    @UserDefault(key: Keys.contextShowSaveMedia.rawValue)
+    public var contextShowSaveMedia: Bool
+
+    @UserDefault(key: Keys.contextShowMessageReplies.rawValue)
+    public var contextShowMessageReplies: Bool
+    
+    @UserDefault(key: Keys.contextShowJson.rawValue)
+    public var contextShowJson: Bool
+    
+    @UserDefault(key: Keys.disableScrollToNextChannel.rawValue)
+    public var disableScrollToNextChannel: Bool
+
+    @UserDefault(key: Keys.disableScrollToNextTopic.rawValue)
+    public var disableScrollToNextTopic: Bool
+
+    @UserDefault(key: Keys.disableChatSwipeOptions.rawValue)
+    public var disableChatSwipeOptions: Bool
+
+    @UserDefault(key: Keys.disableDeleteChatSwipeOption.rawValue)
+    public var disableDeleteChatSwipeOption: Bool
+
+    @UserDefault(key: Keys.disableGalleryCamera.rawValue)
+    public var disableGalleryCamera: Bool
+
+    @UserDefault(key: Keys.disableGalleryCameraPreview.rawValue)
+    public var disableGalleryCameraPreview: Bool
+
+    @UserDefault(key: Keys.disableSendAsButton.rawValue)
+    public var disableSendAsButton: Bool
+
+    @UserDefault(key: Keys.disableSnapDeletionEffect.rawValue)
+    public var disableSnapDeletionEffect: Bool
+    
+    @UserDefault(key: Keys.stickerSize.rawValue)
+    public var stickerSize: Int32
+    
+    @UserDefault(key: Keys.stickerTimestamp.rawValue)
+    public var stickerTimestamp: Bool    
+
+    @UserDefault(key: Keys.hideRecordingButton.rawValue)
+    public var hideRecordingButton: Bool
+    
+    @UserDefault(key: Keys.hideTabBar.rawValue)
+    public var hideTabBar: Bool
+
+    @UserDefault(key: Keys.showProfileId.rawValue)
+    public var showProfileId: Bool
+    
+    @UserDefault(key: Keys.showDC.rawValue)
+    public var showDC: Bool
+    
+    @UserDefault(key: Keys.showCreationDate.rawValue)
+    public var showCreationDate: Bool
+
+    @UserDefault(key: Keys.showRegDate.rawValue)
+    public var showRegDate: Bool
+
+    public var regDateCache = UserDefaultsBackedDictionary<String, Data>(userDefaultsKey: Keys.regDateCache.rawValue, threadSafe: false)
+    
+    @UserDefault(key: Keys.compactChatList.rawValue)
+    public var compactChatList: Bool
+
+    @UserDefault(key: Keys.chatListLines.rawValue)
+    public var chatListLines: String
+
+    @UserDefault(key: Keys.compactFolderNames.rawValue)
+    public var compactFolderNames: Bool
+    
+    @UserDefault(key: Keys.allChatsTitleLengthOverride.rawValue)
+    public var allChatsTitleLengthOverride: String
+//    
+//    @UserDefault(key: Keys.allChatsFolderPositionOverride.rawValue)
+//    public var allChatsFolderPositionOverride: String
+    @UserDefault(key: Keys.allChatsHidden.rawValue)
+    public var allChatsHidden: Bool
+
+    @UserDefault(key: Keys.defaultEmojisFirst.rawValue)
+    public var defaultEmojisFirst: Bool
+    
+    @UserDefault(key: Keys.messageDoubleTapActionOutgoing.rawValue)
+    public var messageDoubleTapActionOutgoing: String
+    
+    @UserDefault(key: Keys.wideChannelPosts.rawValue)
+    public var wideChannelPosts: Bool
+
+    @UserDefault(key: Keys.forceEmojiTab.rawValue)
+    public var forceEmojiTab: Bool
+    
+    @UserDefault(key: Keys.forceBuiltInMic.rawValue)
+    public var forceBuiltInMic: Bool
+    
+    @UserDefault(key: Keys.secondsInMessages.rawValue)
+    public var secondsInMessages: Bool
+
+    @UserDefault(key: Keys.keepDeletedMessages.rawValue)
+    public var keepDeletedMessages: Bool
+
+    @UserDefault(key: Keys.saveEditHistory.rawValue)
+    public var saveEditHistory: Bool
+
+    @UserDefault(key: Keys.ghostModeDontRead.rawValue)
+    public var ghostModeDontRead: Bool
+
+    @UserDefault(key: Keys.ghostModeDontSendTyping.rawValue)
+    public var ghostModeDontSendTyping: Bool
+
+    @UserDefault(key: Keys.ghostModeStayOffline.rawValue)
+    public var ghostModeStayOffline: Bool
+
+    @UserDefault(key: Keys.fakeGpsEnabled.rawValue)
+    public var fakeGpsEnabled: Bool
+
+    @UserDefault(key: Keys.fakeGpsMode.rawValue)
+    public var fakeGpsMode: String
+
+    @UserDefault(key: Keys.fakeGpsCoordinates.rawValue)
+    public var fakeGpsCoordinates: String
+
+    @UserDefault(key: Keys.fakeGpsSpeed.rawValue)
+    public var fakeGpsSpeed: String
+
+    @UserDefault(key: Keys.fakeGpsCircleRadius.rawValue)
+    public var fakeGpsCircleRadius: String
+
+    @UserDefault(key: Keys.fakeGpsJitter.rawValue)
+    public var fakeGpsJitter: Bool
+
+    @UserDefault(key: Keys.fakeGpsFrozenCoord.rawValue)
+    public var fakeGpsFrozenCoord: String
+
+    @UserDefault(key: Keys.fakeGpsLoopStartTime.rawValue)
+    public var fakeGpsLoopStartTime: Double
+
+    @UserDefault(key: Keys.fakeGpsSmartPauses.rawValue)
+    public var fakeGpsSmartPauses: Bool
+
+    @UserDefault(key: Keys.fakeGpsPresetsJson.rawValue)
+    public var fakeGpsPresetsJson: String
+
+    @UserDefault(key: Keys.geminiApiKey.rawValue)
+    public var geminiApiKey: String
+
+    @UserDefault(key: Keys.stealthHideChatsEnabled.rawValue)
+    public var stealthHideChatsEnabled: Bool
+
+    @UserDefault(key: Keys.stealthPasscode.rawValue)
+    public var stealthPasscode: String
+
+    @UserDefault(key: Keys.hiddenChatIdsJson.rawValue)
+    public var hiddenChatIdsJson: String
+
+    @UserDefault(key: Keys.ghostModeReadOnSend.rawValue)
+    public var ghostModeReadOnSend: Bool
+
+    @UserDefault(key: Keys.keepDeletedMediaCache.rawValue)
+    public var keepDeletedMediaCache: Bool
+
+    @UserDefault(key: Keys.quickRepliesJson.rawValue)
+    public var quickRepliesJson: String
+    
+    @UserDefault(key: Keys.hideChannelBottomButton.rawValue)
+    public var hideChannelBottomButton: Bool
+
+    @UserDefault(key: Keys.forceSystemSharing.rawValue)
+    public var forceSystemSharing: Bool
+
+    @UserDefault(key: Keys.confirmCalls.rawValue)
+    public var confirmCalls: Bool
+    
+    @UserDefault(key: Keys.videoPIPSwipeDirection.rawValue)
+    public var videoPIPSwipeDirection: String
+
+    @UserDefault(key: Keys.legacyNotificationsFix.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var legacyNotificationsFix: Bool
+    
+    @UserDefault(key: Keys.status.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var status: Int64
+
+    public var ephemeralStatus: Int64 = 1
+    
+    @UserDefault(key: Keys.messageFilterKeywords.rawValue)
+    public var messageFilterKeywords: [String]
+    
+    @UserDefault(key: Keys.inputToolbar.rawValue)
+    public var inputToolbar: Bool
+
+    @UserDefault(key: Keys.sendWithReturnKey.rawValue)
+    public var sendWithReturnKey: Bool
+    
+    @UserDefault(key: Keys.pinnedMessageNotifications.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var pinnedMessageNotifications: String
+    
+    @UserDefault(key: Keys.mentionsAndRepliesNotifications.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var mentionsAndRepliesNotifications: String
+    
+    @UserDefault(key: Keys.primaryUserId.rawValue)
+    public var primaryUserId: String
+
+    @UserDefault(key: Keys.dismissedSGSuggestions.rawValue)
+    public var dismissedSGSuggestions: [String]
+
+    @UserDefault(key: Keys.duckyAppIconAvailable.rawValue)
+    public var duckyAppIconAvailable: Bool
+
+    @UserDefault(key: Keys.transcriptionBackend.rawValue)
+    public var transcriptionBackend: String
+
+    @UserDefault(key: Keys.translationBackend.rawValue)
+    public var translationBackend: String
+
+    @UserDefault(key: Keys.translatorLogsExpiration.rawValue)
+    private var translatorLogsExpiration: Double
+
+    public var translatorLogsEnabled: Bool {
+        if self.translatorLogsExpiration > Date().timeIntervalSince1970 {
+            return true
+        }
+        if self.translatorLogsExpiration != 0.0 {
+            self.translatorLogsExpiration = 0.0
+        }
+        return false
+    }
+
+    public func setTranslatorLogsEnabled(_ enabled: Bool) {
+        self.translatorLogsExpiration = enabled ? Date().addingTimeInterval(24.0 * 60.0 * 60.0).timeIntervalSince1970 : 0.0
+    }
+
+    @UserDefault(key: Keys.customAppBadge.rawValue)
+    public var customAppBadge: String
+
+    @UserDefault(key: Keys.canUseNY.rawValue)
+    public var canUseNY: Bool
+
+    @UserDefault(key: Keys.nyStyle.rawValue)
+    public var nyStyle: String
+
+    @UserDefault(key: Keys.wideTabBar.rawValue)
+    public var wideTabBar: Bool
+    
+    @UserDefault(key: Keys.tabBarSearchEnabled.rawValue)
+    public var tabBarSearchEnabled: Bool
+
+    @UserDefault(key: Keys.videoControlsInFooter.rawValue)
+    public var videoControlsInFooter: Bool
+
+    @UserDefault(key: Keys.combinedMediaViewer.rawValue)
+    public var combinedMediaViewer: Bool
+
+    @UserDefault(key: Keys.hideAccountInNotifications.rawValue, userDefaults: UserDefaults(suiteName: APP_GROUP_IDENTIFIER) ?? .standard)
+    public var hideAccountInNotifications: Bool
+}
+
+extension SGSimpleSettings {
+    public var isStealthModeEnabled: Bool {
+        return storyStealthMode && canUseStealthMode
+    }
+    
+    public static func makeOutgoingLanguageTranslationKey(accountId: Int64, peerId: Int64) -> String {
+        return "\(accountId):\(peerId)"
+    }
+}
+
+extension SGSimpleSettings {
+    public var translationBackendEnum: SGSimpleSettings.TranslationBackend {
+        return TranslationBackend(rawValue: translationBackend) ?? .default
+    }
+    
+    public var transcriptionBackendEnum: SGSimpleSettings.TranscriptionBackend {
+        return TranscriptionBackend(rawValue: transcriptionBackend) ?? .default
+    }
+}
+
+extension SGSimpleSettings {
+    public var isNYEnabled: Bool {
+        return canUseNY && NYStyle(rawValue: nyStyle) != .default
+    }
+}
+
+public func getSGDownloadPartSize(_ default: Int64, fileSize: Int64?) -> Int64 {
+    let currentDownloadSetting = SGSimpleSettings.shared.downloadSpeedBoost
+    // Increasing chunk size for small files make it worse in terms of overall download performance
+    let smallFileSizeThreshold = 1 * 1024 * 1024 // 1 MB
+    switch (currentDownloadSetting) {
+        case SGSimpleSettings.DownloadSpeedBoostValues.medium.rawValue:
+            if let fileSize, fileSize <= smallFileSizeThreshold {
+                return `default`
+            }
+            return 512 * 1024
+        case SGSimpleSettings.DownloadSpeedBoostValues.maximum.rawValue:
+            if let fileSize, fileSize <= smallFileSizeThreshold {
+                return `default`
+            }
+            return 1024 * 1024
+        default:
+            return `default`
+    }
+}
+
+public func getSGMaxPendingParts(_ default: Int) -> Int {
+    let currentDownloadSetting = SGSimpleSettings.shared.downloadSpeedBoost
+    switch (currentDownloadSetting) {
+        case SGSimpleSettings.DownloadSpeedBoostValues.medium.rawValue:
+            return 8
+        case SGSimpleSettings.DownloadSpeedBoostValues.maximum.rawValue:
+            return 12
+        default:
+            return `default`
+    }
+}
+
+public func sgUseShortAllChatsTitle(_ default: Bool) -> Bool {
+    let currentOverride = SGSimpleSettings.shared.allChatsTitleLengthOverride
+    switch (currentOverride) {
+        case SGSimpleSettings.AllChatsTitleLengthOverride.short.rawValue:
+            return true
+        case SGSimpleSettings.AllChatsTitleLengthOverride.long.rawValue:
+            return false
+        default:
+            return `default`
+    }
+}
