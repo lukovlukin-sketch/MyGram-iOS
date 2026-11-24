@@ -67,6 +67,7 @@ jobs:
               print("Using custom TELEGRAM_API_ID / TELEGRAM_API_HASH from GitHub Secrets.")
           else:
               print("TELEGRAM_API_ID / TELEGRAM_API_HASH not set — using default open-source config values.")
+          cfg.setdefault("sg_config", "")
           cfg["is_appstore_build"] = "false"
           cfg["is_internal_build"] = "true"
           cfg["enable_siri"] = False
