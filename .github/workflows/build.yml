@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
     runs-on: macos-26-intel
-    timeout-minutes: 180
+    timeout-minutes: 360
 
     steps:
       - name: Free up disk space
@@ -128,6 +128,7 @@ jobs:
             --bazelUserRoot="$BAZEL_USER_ROOT" \
             --overrideXcodeVersion \
             --overrideBazelVersion \
+            --bazelArguments="--//Telegram:disableExtensions" \
             build \
             --configurationPath="build-system/mygram-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
