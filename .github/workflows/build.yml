@@ -43,6 +43,7 @@ jobs:
             sudo xcode-select -s "${LATEST_XCODE}/Contents/Developer"
           fi
           xcodebuild -version
+          xcodebuild -downloadComponent MetalToolchain
 
       - name: Prepare MyGram build configuration
         env:
