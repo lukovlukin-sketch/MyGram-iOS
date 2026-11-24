@@ -100,9 +100,12 @@ jobs:
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
 
+          which bazel || brew install bazelisk
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="$BAZEL_USER_ROOT" \
+            --overrideXcodeVersion \
+            --overrideBazelVersion \
             build \
             --configurationPath="build-system/mygram-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
