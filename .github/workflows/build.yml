@@ -131,7 +131,7 @@ jobs:
             build \
             --configurationPath="build-system/mygram-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
-            --configuration=release_arm64 \
+            --configuration=debug_arm64 \
             --buildNumber="$BUILD_NUMBER" 2>&1 | tee /tmp/mygram_build.log || {
               ERR_TAIL=$(tail -n 30 /tmp/mygram_build.log | grep -v "^  % Total" | tr '\n' ' ' | cut -c1-1200)
               echo "::error::Build failed: $ERR_TAIL"
@@ -142,7 +142,7 @@ jobs:
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
 
-          for f in bazel-out/applebin_ios-ios_arm*-opt-ST-*/bin/Telegram/*.ipa; do
+          for f in bazel-out/applebin_ios-ios_arm*/bin/Telegram/*.ipa; do
             cp "$f" "$OUTPUT_PATH/MyGram-full.ipa"
           done
 
