@@ -107,6 +107,20 @@ jobs:
           chmod +x "$BAZEL_BIN"
           "$BAZEL_BIN" --version
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+
+          # Re-sign expired fake provisioning profiles (2026-10-30 -> 2036-10-30) with valid CMS envelope
+          openssl pkcs12 -in build-system/fake-codesigning/certs/SelfSigned.p12 -clcerts -nokeys -out /tmp/fake_cert.pem -passin pass: -legacy || \
+            openssl pkcs12 -in build-system/fake-codesigning/certs/SelfSigned.p12 -clcerts -nokeys -out /tmp/fake_cert.pem -passin pass:
+          openssl pkcs12 -in build-system/fake-codesigning/certs/SelfSigned.p12 -nocerts -nodes -out /tmp/fake_key.pem -passin pass: -legacy || \
+            openssl pkcs12 -in build-system/fake-codesigning/certs/SelfSigned.p12 -nocerts -nodes -out /tmp/fake_key.pem -passin pass:
+          for p in build-system/fake-codesigning/profiles/*.mobileprovision; do
+            security cms -D -i "$p" > /tmp/profile.plist
+            sed -i '' 's/2026-10-30T17:06:30Z/2036-10-30T17:06:30Z/g' /tmp/profile.plist
+            openssl smime -sign -nodetach -in /tmp/profile.plist -out "$p" -outform DER -signer /tmp/fake_cert.pem -inkey /tmp/fake_key.pem
+            security cms -D -i "$p" > /dev/null
+          done
+          echo "Successfully re-signed all fake provisioning profiles to 2036."
+
           set -o pipefail
           python3 -u build-system/Make/Make.py \
             --bazel="$BAZEL_BIN" \
