@@ -212,6 +212,7 @@ submodules/TelegramUI/Sources/ChatControllerContentData.swift
 submodules/TelegramUI/Sources/ChatControllerNode.swift
 submodules/TelegramUI/Sources/ChatControllerOpenMessageShareMenu.swift
 submodules/TelegramUI/Sources/ChatHistoryListNode.swift
+submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift
 submodules/TelegramUI/Sources/ChatPinnedMessageTitlePanelNode.swift
 submodules/TelegramUI/Sources/CreateGroupController.swift
 submodules/TelegramUI/Sources/CreatePeerAvatarSetup.swift
