@@ -3,6 +3,9 @@ name: Build MyGram IPA
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'tools/**'
+      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
       bundle_id:

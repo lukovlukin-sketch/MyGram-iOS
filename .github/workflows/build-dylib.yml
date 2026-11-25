@@ -1,0 +1,49 @@
+name: Build Sideload Fix Dylib
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'tools/MyGramSideloadFix.m'
+      - '.github/workflows/build-dylib.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-dylib:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            tools/MyGramSideloadFix.m
+
+      - name: Compile MyGramSideloadFix.dylib for iOS arm64
+        run: |
+          set -euo pipefail
+          SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+          xcrun --sdk iphoneos clang \
+            -arch arm64 \
+            -isysroot "$SDK" \
+            -mios-version-min=15.0 \
+            -dynamiclib \
+            -fobjc-arc \
+            -framework Foundation \
+            -install_name @rpath/MyGramSideloadFix.dylib \
+            -o MyGramSideloadFix.dylib \
+            tools/MyGramSideloadFix.m
+          file MyGramSideloadFix.dylib
+          otool -L MyGramSideloadFix.dylib
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: mygram-sideload-fix
+          name: MyGram Sideload Fix Dylib
+          body: |
+            Clean App Group fallback dylib for free Apple ID sideloading (without spoofing Bundle ID so Assets.car and TabBar icons load cleanly).
+          files: MyGramSideloadFix.dylib
