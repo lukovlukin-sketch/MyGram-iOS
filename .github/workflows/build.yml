@@ -143,9 +143,13 @@ jobs:
           rm -rf "$OUTPUT_PATH"
           mkdir -p "$OUTPUT_PATH"
 
-          for f in bazel-out/applebin_ios-ios_arm*/bin/Telegram/*.ipa; do
-            cp "$f" "$OUTPUT_PATH/MyGram-full.ipa"
-          done
+          IPA_FILE=$(find bazel-bin bazel-out -name "*.ipa" -type f 2>/dev/null | head -n 1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "::error::No .ipa file found in bazel-bin or bazel-out"
+            exit 1
+          fi
+          echo "Found built IPA: $IPA_FILE"
+          cp "$IPA_FILE" "$OUTPUT_PATH/MyGram-full.ipa"
 
           # Create a sideload-friendly IPA (removes PlugIns/Watch extensions that hit free Apple ID 10-AppID limits)
           WORK_DIR=$(mktemp -d)
