@@ -84,7 +84,7 @@ func appendMyGramContextMenuActions(
         if SGSimpleSettings.shared.fakeGpsEnabled {
             let realGpsTitle = isRuLang ? "Выкл. Fake GPS (реальное гео)" : "Disable Fake GPS (Real GPS)"
             actions.append(.action(ContextMenuActionItem(text: realGpsTitle, icon: { theme in
-                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Clear"), color: theme.actionSheet.destructiveTextColor)
+                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Clear"), color: theme.actionSheet.destructiveActionTextColor)
             }, action: { _, f in
                 f(.default)
                 SGSimpleSettings.shared.fakeGpsEnabled = false
