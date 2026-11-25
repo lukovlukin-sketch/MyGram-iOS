@@ -122,6 +122,10 @@ jobs:
           done
           echo "Successfully re-signed all fake provisioning profiles to 2036."
 
+          OUTPUT_PATH="$SOURCE_DIR/build/artifacts"
+          rm -rf "$OUTPUT_PATH"
+          mkdir -p "$OUTPUT_PATH"
+
           set -o pipefail
           python3 -u build-system/Make/Make.py \
             --bazel="$BAZEL_BIN" \
@@ -133,19 +137,20 @@ jobs:
             --configurationPath="build-system/mygram-configuration.json" \
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=debug_arm64 \
-            --buildNumber="$BUILD_NUMBER" 2>&1 | tee /tmp/mygram_build.log || {
+            --buildNumber="$BUILD_NUMBER" \
+            --outputBuildArtifactsPath="$OUTPUT_PATH" 2>&1 | tee /tmp/mygram_build.log || {
               ERR_TAIL=$(tail -n 30 /tmp/mygram_build.log | grep -v "^  % Total" | tr '\n' ' ' | cut -c1-1200)
               echo "::error::Build failed: $ERR_TAIL"
               exit 1
             }
 
-          OUTPUT_PATH="$SOURCE_DIR/build/artifacts"
-          rm -rf "$OUTPUT_PATH"
-          mkdir -p "$OUTPUT_PATH"
-
-          IPA_FILE=$(find bazel-bin bazel-out -name "*.ipa" -type f 2>/dev/null | head -n 1)
+          if [ -f "$OUTPUT_PATH/Swiftgram.ipa" ]; then
+            IPA_FILE="$OUTPUT_PATH/Swiftgram.ipa"
+          else
+            IPA_FILE=$(find -L bazel-bin bazel-out "$BAZEL_USER_ROOT" -name "*.ipa" -type f 2>/dev/null | head -n 1)
+          fi
           if [ -z "$IPA_FILE" ]; then
-            echo "::error::No .ipa file found in bazel-bin or bazel-out"
+            echo "::error::No .ipa file found anywhere after build"
             exit 1
           fi
           echo "Found built IPA: $IPA_FILE"
